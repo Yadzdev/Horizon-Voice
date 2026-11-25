@@ -1,4 +1,5 @@
 .env
+.env.*
 *.db
 *.sqlite3
 __pycache__/
@@ -12,3 +13,4 @@ backend/.ruff_cache/
 dist/
 certs/*
 !certs/.gitkeep
+!.env.example

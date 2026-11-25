@@ -284,16 +284,7 @@ export default function VoiceSession({ playerName, onNotice, onError }: Props) {
     }
   }
 
-  async function unlockAudioPlayback() {
-    try {
-      await roomRef.current?.startAudio();
-      await Promise.all([...audioElements.current.values()].map(element => element.play()));
-      setAudioUnlockNeeded(false);
-      setConnectionQuality('Reprodução de áudio liberada.');
-    } catch (error) {
-      onError(`Não foi possível ativar o áudio: ${(error as Error).message}`);
-    }
-  }
+
 
   async function toggleMute() {
     const next = !muted;
