@@ -1,0 +1,106 @@
+name: horizon-voice
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-horizon_voice}
+      POSTGRES_USER: ${POSTGRES_USER:-horizon_voice}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-horizon_voice} -d ${POSTGRES_DB:-horizon_voice}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      AUTO_CREATE_SCHEMA: "false"
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-horizon_voice}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-horizon_voice}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      PUBLIC_BASE_DOMAIN: voice-horizon.online
+      CORS_ORIGINS: https://voice-horizon.online
+      COOKIE_SECURE: "true"
+      LIVEKIT_URL: http://livekit:7880
+      LIVEKIT_PUBLIC_URL: wss://media.voice-horizon.online
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-horizon_voice}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?Set LIVEKIT_API_SECRET in .env}
+      DEFAULT_PROXIMITY_BLOCKS: "30"
+      LIVEKIT_TOKEN_MINUTES: "60"
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    expose: ["8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  livekit:
+    image: ${LIVEKIT_IMAGE:-livekit/livekit-server:v1.13.11}
+    restart: unless-stopped
+    cap_add: [NET_BIND_SERVICE]
+    command: ["--config", "/etc/livekit.yaml", "--keys", "${LIVEKIT_API_KEY:-horizon_voice}:${LIVEKIT_API_SECRET:?Set LIVEKIT_API_SECRET in .env}", "--redis-password", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
+    volumes:
+      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml:ro
+      - ./certs:/etc/livekit/certs:ro
+    depends_on:
+      redis: {condition: service_healthy}
+    ports:
+      - "7881:7881/tcp"
+      - "50000-60000:50000-60000/udp"
+      - "30000-40000:30000-40000/udp"
+      - "3478:3478/udp"
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api: {condition: service_healthy}
+      livekit: {condition: service_started}
+    expose: ["8080", "8443"]
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+
+  edge:
+    image: haproxy:3.0-alpine
+    restart: unless-stopped
+    depends_on: [web, livekit]
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./infra/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.240.0/24

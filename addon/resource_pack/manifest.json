@@ -1,0 +1,21 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Horizon Voice - Resource Pack",
+    "description": "Optional Horizon Voice visual assets. No vanilla HUD layout is replaced.",
+    "uuid": "a6f6a61e-9f9d-4438-9381-4daac77c94be",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 26, 30]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "f9ba4714-4d3e-4a0c-9f06-2a9de5c2a1db",
+      "version": [0, 1, 0]
+    }
+  ],
+  "metadata": {
+    "authors": ["Horizon Voice"],
+    "license": "MIT"
+  }
+}

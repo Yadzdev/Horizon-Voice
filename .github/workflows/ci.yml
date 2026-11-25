@@ -1,0 +1,54 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12', cache: pip, cache-dependency-path: backend/pyproject.toml}
+      - run: python -m pip install -e '.[test]'
+        working-directory: backend
+      - run: python -m pytest
+        working-directory: backend
+      - name: Verify clean database migration
+        env:
+          DATABASE_URL: sqlite:////tmp/horizon_voice_ci.sqlite3
+          AUTO_CREATE_SCHEMA: "false"
+          ENVIRONMENT: test
+        run: python -m alembic upgrade head
+        working-directory: backend
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm install
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+  addon-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m json.tool addon/behavior_pack/manifest.json > /dev/null && python -m json.tool addon/resource_pack/manifest.json > /dev/null
+      - name: Validate add-on scripts
+        shell: bash
+        run: |
+          for file in addon/behavior_pack/scripts/*.js; do node --check "$file"; done
+      - run: python -m compileall -q scripts
+      - run: python scripts/package_addon.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: horizon-voice-bds-preview
+          path: dist/*.mcaddon

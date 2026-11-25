@@ -1,0 +1,29 @@
+port: 7880
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 60000
+  use_external_ip: true
+redis:
+  address: redis:6379
+webhook:
+  api_key: horizon_voice
+  urls:
+    - http://api:8000/api/v1/livekit/webhook
+turn:
+  enabled: true
+  udp_port: 3478
+  tls_port: 443
+  relay_range_start: 30000
+  relay_range_end: 40000
+  domain: turn.voice-horizon.online
+  cert_file: /etc/livekit/certs/fullchain.pem
+  key_file: /etc/livekit/certs/privkey.pem
+  proxy_protocol: true
+  proxy_protocol_trusted_cidrs:
+    - 172.31.240.0/24
+room:
+  enable_remote_unmute: true
+  max_participants: 500
+logging:
+  level: info
