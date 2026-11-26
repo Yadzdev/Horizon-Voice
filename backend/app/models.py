@@ -25,6 +25,8 @@ class Server(Base):
     name: Mapped[str] = mapped_column(String(80))
     slug: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     description: Mapped[str] = mapped_column(String(240), default="")
+    image_filename: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    image_content_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")
     server_secret_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     max_distance: Mapped[float] = mapped_column(Float, default=30.0)

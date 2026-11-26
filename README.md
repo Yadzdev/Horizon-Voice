@@ -56,6 +56,8 @@ O projeto oferece uma experiência de comunicação integrada ao ambiente dos se
 | [Segurança](docs/SECURITY.md) | Segurança e proteção |
 | [Problemas comuns](docs/TROUBLESHOOTING.md) | Solução de problemas |
 | [Validação](docs/VALIDATION_REPORT.md) | Relatório de validação |
+| [Interface e motion](docs/FRONTEND_DESIGN.md) | Identidade visual, experiência do jogador e acessibilidade |
+| [Observabilidade](docs/OBSERVABILITY.md) | Sentry, OpenTelemetry e destinos OTLP |
 
 ## Tecnologias
 
