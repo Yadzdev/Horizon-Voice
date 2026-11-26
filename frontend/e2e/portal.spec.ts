@@ -74,7 +74,7 @@ test('owner can register a server with a cover image', async ({ page }) => {
   await page.getByRole('button', { name: /^Entrar/ }).click();
 
   await page.getByLabel('Nome do servidor').fill('Terra SMP');
-  await page.getByLabel('Endereço do portal').locator('input').fill('terra-smp');
+  await page.locator('.slug-input input').fill('terra-smp');
   await page.getByLabel('Descrição do servidor').fill('Meu mundo Bedrock');
   await page.locator('#server-image').setInputFiles({
     name: 'cover.png',
