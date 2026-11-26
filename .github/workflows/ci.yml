@@ -75,3 +75,9 @@ jobs:
         with:
           name: horizon-voice-bds-preview
           path: dist/*.mcaddon
+      - name: Package complete source ZIP
+        run: python scripts/package_source.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: horizon-voice-source
+          path: dist/Horizon-Voice-Source.zip
