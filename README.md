@@ -1,102 +1,66 @@
-# 🎙️ Horizon Voice
-### Voice Chat exclusivo para Minecraft Bedrock Dedicated Server
+﻿<div align="center">
 
-<p align="center">
-  <strong>HORIZON STUDIOS</strong>
-</p>
+# HORIZON VOICE
 
-<p align="center">
-  Comunicação por voz. Conexões em tempo real. Uma nova experiência para servidores Minecraft Bedrock.
-</p>
+### Comunicação por voz para Minecraft Bedrock Dedicated Server
 
----
+**Desenvolvido pela Horizon Studios**
 
-## 📖 Sobre o projeto
+[Documentação](docs/INSTALLATION.md) ·
+[API](docs/API.md) ·
+[Segurança](docs/SECURITY.md) ·
+[Instalação](docs/INSTALLATION.md)
 
-**Horizon Voice** é um sistema de comunicação por voz desenvolvido exclusivamente para servidores **Minecraft Bedrock Dedicated Server (BDS)**.
-
-O projeto tem como objetivo oferecer aos jogadores uma experiência de comunicação por voz integrada ao ambiente dos servidores, permitindo uma interação mais dinâmica, natural e imersiva.
-
-Desenvolvido pela **Horizon Studios**, o Horizon Voice busca entregar uma infraestrutura moderna, confiável e preparada para atender servidores de diferentes tamanhos.
-
-## ✨ Principais características
-
-- 🎙️ Sistema de comunicação por voz para Minecraft Bedrock.
-- 🌐 Infraestrutura baseada em comunicação em tempo real.
-- 🔐 Sistema de autenticação e proteção das conexões.
-- ⚡ Backend desenvolvido para operações de baixa latência.
-- 🖥️ Painel web para gerenciamento e configuração.
-- 🏠 Suporte à criação e gerenciamento de servidores.
-- 🎨 Interface personalizada com identidade visual Minecraft.
-- 📱 Interface adaptada para dispositivos móveis e computadores.
-- 🔧 Arquitetura preparada para futuras expansões.
-
-## 🏗️ Arquitetura
-
-O Horizon Voice utiliza uma arquitetura separada entre frontend e backend, permitindo que cada componente seja desenvolvido, atualizado e escalado independentemente.
-
-| Componente | Responsabilidade |
-|---|---|
-| Frontend | Interface web e painel de gerenciamento |
-| Backend | Processamento, autenticação e gerenciamento |
-| Voice Infrastructure | Comunicação e operações relacionadas à voz |
-| Database | Persistência das informações |
-| Web Panel | Gerenciamento dos servidores e configurações |
-
-## 🛠️ Tecnologias
-
-O projeto utiliza tecnologias modernas para desenvolver uma infraestrutura de comunicação e gerenciamento.
-
-- **Node.js** — Serviços e operações de backend.
-- **Python** — Componentes da infraestrutura de voz.
-- **Web Technologies** — Desenvolvimento da interface.
-- **Database** — Armazenamento e gerenciamento de dados.
-- **WebSocket / Real-time Communication** — Comunicação em tempo real, conforme os componentes do sistema.
-
-## 🚀 Objetivos
-
-O Horizon Voice está sendo desenvolvido com foco em:
-
-1. Oferecer comunicação por voz para comunidades Minecraft Bedrock.
-2. Facilitar a administração de servidores.
-3. Disponibilizar uma experiência simples para os jogadores.
-4. Construir uma infraestrutura escalável.
-5. Permitir futuras integrações com ferramentas e sistemas externos.
-
-## 👨‍💻 Desenvolvimento
-
-O projeto é desenvolvido pela equipe Horizon Studios.
-
-| Desenvolvedor | Responsabilidade |
-|---|---|
-| Yadz | Backend e infraestrutura |
-| LiamDev | Frontend e interface web |
-
-## 🔒 Segurança
-
-A segurança é uma prioridade no desenvolvimento do Horizon Voice.
-
-A arquitetura busca garantir:
-- Proteção das informações dos usuários.
-- Autenticação das operações.
-- Comunicação protegida.
-- Separação entre serviços públicos e internos.
-- Controle de acesso aos recursos administrativos.
-
-## 📌 Status do projeto
-
-**Horizon Voice — Em desenvolvimento.**
-
-O projeto encontra-se em fase avançada de desenvolvimento, com foco na finalização da infraestrutura, interface e integração dos componentes.
-
-Novas funcionalidades e melhorias serão disponibilizadas conforme a evolução do projeto.
+</div>
 
 ---
 
-<p align="center">
-  <strong>HORIZON STUDIOS</strong>
-  <br>
-  Building new possibilities.
-  <br><br>
-  © 2026 Horizon Studios. All rights reserved.
-</p>
+## Sobre o projeto
+
+O **Horizon Voice** é um sistema de comunicação por voz desenvolvido exclusivamente para servidores Minecraft Bedrock Dedicated Server (BDS).
+
+O projeto oferece uma experiência de comunicação integrada ao ambiente dos servidores, com infraestrutura própria, autenticação e painel de gerenciamento.
+
+## Funcionalidades
+
+- Comunicação por voz em tempo real.
+- Integração com Minecraft Bedrock.
+- Sistema de autenticação.
+- Proteção das conexões.
+- Backend preparado para baixa latência.
+- Painel web de gerenciamento.
+- Gerenciamento de servidores.
+
+## Estrutura do projeto
+
+| Diretório | Descrição |
+|---|---|
+| `addon/` | Integração com Minecraft Bedrock |
+| `backend/` | API e infraestrutura principal |
+| `frontend/` | Interface web |
+| `infra/` | Infraestrutura e configurações |
+| `certs/` | Configurações de certificados |
+| `scripts/` | Scripts administrativos |
+| `docs/` | Documentação técnica |
+
+## Documentação
+
+| Documento | Conteúdo |
+|---|---|
+| [API](docs/API.md) | Endpoints e integração |
+| [Compatibilidade](docs/COMPATIBILITY.md) | Compatibilidade e requisitos |
+| [Configuração](docs/CONFIGURATION.md) | Configurações do sistema |
+| [Deploy](docs/DEPLOYMENT.md) | Implantação |
+| [GitHub](docs/GITHUB.md) | Fluxo de desenvolvimento |
+| [Instalação](docs/INSTALLATION.md) | Guia de instalação |
+| [Segurança](docs/SECURITY.md) | Segurança e proteção |
+| [Problemas comuns](docs/TROUBLESHOOTING.md) | Solução de problemas |
+| [Validação](docs/VALIDATION_REPORT.md) | Relatório de validação |
+
+## Tecnologias
+
+O projeto utiliza uma arquitetura baseada em frontend, backend e integração com Minecraft Bedrock Dedicated Server.
+
+## Horizon Studios
+
+Projeto desenvolvido pela **Horizon Studios**.
