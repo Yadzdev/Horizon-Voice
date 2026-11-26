@@ -14,3 +14,6 @@ dist/
 certs/*
 !certs/.gitkeep
 !.env.example
+
+# Locally stored server cover images (production uses the Docker media_data volume)
+media/

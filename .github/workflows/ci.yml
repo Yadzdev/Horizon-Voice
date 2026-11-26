@@ -16,8 +16,15 @@ jobs:
         with: {python-version: '3.12', cache: pip, cache-dependency-path: backend/pyproject.toml}
       - run: python -m pip install -e '.[test]'
         working-directory: backend
-      - run: python -m pytest
+      - run: python -m pytest --cov=app --cov-report=xml:coverage.xml
         working-directory: backend
+      - name: Upload backend coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: backend/coverage.xml
+          flags: backend
+          fail_ci_if_error: false
       - name: Verify clean database migration
         env:
           DATABASE_URL: sqlite:////tmp/horizon_voice_ci.sqlite3
@@ -33,7 +40,23 @@ jobs:
         with: {node-version: '22'}
       - run: npm install
         working-directory: frontend
+      - run: npm run lint
+        working-directory: frontend
+      - run: npm run arch:check
+        working-directory: frontend
+      - run: npm run knip
+        working-directory: frontend
+      - run: npm run typecheck
+        working-directory: frontend
+      - run: npm run test:unit
+        working-directory: frontend
+      - run: npm run test:mutation
+        working-directory: frontend
       - run: npm run build
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:e2e
         working-directory: frontend
   addon-validation:
     runs-on: ubuntu-latest

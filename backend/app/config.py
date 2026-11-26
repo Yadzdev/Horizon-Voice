@@ -32,6 +32,10 @@ class Settings:
     pairing_code_seconds: int = int(os.getenv("PAIRING_CODE_SECONDS", "180"))
     pairing_rate_per_minute: int = int(os.getenv("PAIRING_RATE_PER_MINUTE", "5"))
     public_base_domain: str = os.getenv("PUBLIC_BASE_DOMAIN", "voice-horizon.online")
+    media_dir: str = os.getenv("MEDIA_DIR", "./media")
+    sentry_dsn: str = os.getenv("SENTRY_DSN", "")
+    otel_enabled: bool = os.getenv("OTEL_ENABLED", "false").lower() == "true"
+    otel_exporter_otlp_endpoint: str = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
     livekit_url: str = os.getenv("LIVEKIT_URL", "http://livekit:7880")
     livekit_public_url: str = os.getenv("LIVEKIT_PUBLIC_URL", "wss://media.voice-horizon.online")
     livekit_api_key: str = os.getenv("LIVEKIT_API_KEY", "")

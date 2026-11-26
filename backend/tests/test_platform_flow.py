@@ -278,3 +278,67 @@ def test_media_sync_is_only_scheduled_from_async_endpoints():
         if calls_sync and not isinstance(node, ast.AsyncFunctionDef):
             offenders.append(name)
     assert offenders == [], f"Rotas agendando tarefas fora do event loop: {offenders}"
+
+
+
+def test_server_cover_upload_is_owner_scoped_and_public_to_players(client, tmp_path, monkeypatch):
+    from io import BytesIO
+    from PIL import Image
+    import app.main as main_module
+
+    monkeypatch.setattr(main_module, "MEDIA_DIR", tmp_path)
+    owner_token, _server_secret, _activation = create_account_and_server(client)
+    auth = {"Authorization": f"Bearer {owner_token}"}
+    server = client.get("/api/v1/dashboard/servers", headers=auth).json()["servers"][0]
+
+    image_bytes = BytesIO()
+    Image.new("RGB", (64, 64), (76, 145, 58)).save(image_bytes, format="PNG")
+    upload = client.put(
+        f"/api/v1/dashboard/servers/{server['id']}/image",
+        headers={**auth, "Content-Type": "image/png"},
+        content=image_bytes.getvalue(),
+    )
+    assert upload.status_code == 200, upload.text
+    assert upload.json()["uploaded"] is True
+
+    public = client.get("/api/v1/public/servers/test-bedrock")
+    assert public.status_code == 200
+    assert public.json()["name"] == "Test Bedrock"
+    assert public.json()["image_url"].endswith("/image")
+
+    image = client.get(public.json()["image_url"])
+    assert image.status_code == 200
+    assert image.headers["content-type"] == "image/webp"
+    assert image.headers["x-content-type-options"] == "nosniff"
+
+    refreshed = client.get("/api/v1/dashboard/servers", headers=auth)
+    assert refreshed.json()["servers"][0]["image_url"] == public.json()["image_url"]
+
+    other = client.post("/api/v1/auth/register", json={
+        "email": "other-owner@example.com", "password": "CorrectHorseBattery!2026"
+    })
+    denied = client.put(
+        f"/api/v1/dashboard/servers/{server['id']}/image",
+        headers={"Authorization": f"Bearer {other.json()['access_token']}", "Content-Type": "image/png"},
+        content=image_bytes.getvalue(),
+    )
+    assert denied.status_code == 404
+
+
+def test_server_cover_rejects_invalid_and_unsupported_files(client):
+    token, _server_secret, _activation = create_account_and_server(client)
+    server = client.get(
+        "/api/v1/dashboard/servers", headers={"Authorization": f"Bearer {token}"}
+    ).json()["servers"][0]
+    invalid = client.put(
+        f"/api/v1/dashboard/servers/{server['id']}/image",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "image/png"},
+        content=b"not-an-image",
+    )
+    assert invalid.status_code == 415
+    unsupported = client.put(
+        f"/api/v1/dashboard/servers/{server['id']}/image",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "image/svg+xml"},
+        content=b"svg",
+    )
+    assert unsupported.status_code == 415

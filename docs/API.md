@@ -18,6 +18,14 @@ All endpoints are prefixed with `/api/v1`. JSON request/response bodies are used
 | POST | `/servers` | Owner | Create pending tenant and 15-minute activation code |
 | POST | `/registration/activate` | Public one-time code | Activate BDS; returns server key once |
 
+## Public server portal and cover image
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/public/servers/{slug}` | Public | Return safe public server details and optional cover URL for the player portal |
+| GET | `/public/servers/{slug}/image` | Public | Serve the optimized WebP cover for an active server |
+| PUT | `/dashboard/servers/{server_id}/image` | Owner | Upload/replace an owned server cover as raw PNG, JPEG or WebP body (2.5 MB maximum); API validates and normalizes to WebP |
+
 ## Browser pairing and player state
 
 | Method | Path | Auth | Purpose |
@@ -56,7 +64,7 @@ All endpoints are prefixed with `/api/v1`. JSON request/response bodies are used
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/dashboard/servers` | Owner | List owned tenants |
+| GET | `/dashboard/servers` | Owner | List owned tenants, including public cover URL when configured |
 | GET | `/dashboard/servers/{server_id}` | Owner | Server metrics |
 | PATCH | `/dashboard/servers/{server_id}/settings` | Owner | Update max distance and voice-enabled flag |
 

@@ -1,6 +1,9 @@
 from __future__ import annotations
 import asyncio
 from datetime import datetime, timedelta, timezone
+from io import BytesIO
+from pathlib import Path
+import warnings
 import math
 import re
 import secrets
@@ -12,6 +15,8 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
@@ -27,15 +32,45 @@ from .security import (
     new_secret, require_account, server_auth, verify_password,
 )
 
+if settings.sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        integrations=[FastApiIntegration()],
+        traces_sample_rate=0.05,
+        send_default_pii=False,
+    )
+
 app = FastAPI(title=settings.app_name, version="0.1.0", docs_url="/docs" if settings.environment != "production" else None)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_origin_regex=r"^https://([a-z0-9-]+\.)?voice-horizon\.online$|^http://localhost(:[0-9]+)?$",
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type", "X-Server-Key", "X-Tenant-Slug"],
 )
+
+# OpenTelemetry exports traces via OTLP/HTTP. Datadog and New Relic can use an OTLP collector.
+if settings.otel_enabled:
+    from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+    provider = TracerProvider(resource=Resource.create({
+        "service.name": "horizon-voice-api",
+        "deployment.environment": settings.environment,
+    }))
+    options = {"endpoint": settings.otel_exporter_otlp_endpoint} if settings.otel_exporter_otlp_endpoint else {}
+    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(**options)))
+    trace.set_tracer_provider(provider)
+    FastAPIInstrumentor.instrument_app(app)
+    SQLAlchemyInstrumentor().instrument(engine=engine)
 
 if settings.auto_create_schema:
     Base.metadata.create_all(bind=engine)
@@ -342,6 +377,108 @@ def create_server(payload: ServerCreateIn, account: Account = Depends(require_ac
         "activation_code": activation,
         "activation_expires_in_seconds": 900,
     }
+
+
+
+MEDIA_DIR = Path(settings.media_dir)
+MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+MAX_SERVER_IMAGE_BYTES = 2_500_000
+IMAGE_CONTENT_TYPES = {"image/png": "PNG", "image/jpeg": "JPEG", "image/webp": "WEBP"}
+Image.MAX_IMAGE_PIXELS = 16_000_000
+
+
+def server_image_url(server: Server) -> str | None:
+    return f"/api/v1/public/servers/{server.slug}/image" if server.image_filename else None
+
+
+@app.get("/api/v1/public/servers/{slug}")
+def public_server(slug: str, db: Session = Depends(get_db)):
+    server = db.query(Server).filter(Server.slug == slug.lower(), Server.status == "active").first()
+    if server is None:
+        raise HTTPException(status_code=404, detail="Servidor Horizon Voice não encontrado")
+    return {"id": server.id, "name": server.name, "slug": server.slug,
+            "description": server.description, "status": server.status,
+            "image_url": server_image_url(server)}
+
+
+@app.get("/api/v1/public/servers/{slug}/image")
+def public_server_image(slug: str, db: Session = Depends(get_db)):
+    server = db.query(Server).filter(Server.slug == slug.lower(), Server.status == "active").first()
+    if server is None or not server.image_filename:
+        raise HTTPException(status_code=404, detail="Imagem do servidor não encontrada")
+    filename = Path(server.image_filename).name
+    if filename != server.image_filename:
+        raise HTTPException(status_code=404, detail="Imagem do servidor não encontrada")
+    image_path = (MEDIA_DIR / filename).resolve()
+    if image_path.parent != MEDIA_DIR.resolve() or not image_path.is_file():
+        raise HTTPException(status_code=404, detail="Imagem do servidor não encontrada")
+    return FileResponse(image_path, media_type=server.image_content_type or "image/webp",
+                        headers={"Cache-Control": "public, max-age=300", "X-Content-Type-Options": "nosniff"})
+
+
+@app.put("/api/v1/dashboard/servers/{server_id}/image")
+async def upload_server_image(server_id: str, request: Request,
+                              account: Account = Depends(require_account), db: Session = Depends(get_db)):
+    server = db.get(Server, server_id)
+    if server is None or server.owner_id != account.id:
+        raise HTTPException(status_code=404, detail="Servidor não encontrado")
+    content_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    expected_format = IMAGE_CONTENT_TYPES.get(content_type)
+    if expected_format is None:
+        raise HTTPException(status_code=415, detail="Use uma imagem PNG, JPEG ou WebP")
+    declared = request.headers.get("content-length")
+    if declared:
+        try:
+            if int(declared) > MAX_SERVER_IMAGE_BYTES:
+                raise HTTPException(status_code=413, detail="A imagem deve ter até 2,5 MB")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Content-Length inválido")
+    chunks: list[bytes] = []
+    received = 0
+    async for chunk in request.stream():
+        received += len(chunk)
+        if received > MAX_SERVER_IMAGE_BYTES:
+            raise HTTPException(status_code=413, detail="A imagem deve ter até 2,5 MB")
+        chunks.append(chunk)
+    raw = b"".join(chunks)
+    if not raw:
+        raise HTTPException(status_code=400, detail="Arquivo de imagem vazio")
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            image = Image.open(BytesIO(raw))
+            if image.format != expected_format:
+                raise HTTPException(status_code=415, detail="O conteúdo não corresponde ao formato informado")
+            image.verify()
+        with Image.open(BytesIO(raw)) as source:
+            source.load()
+            normalized_image = ImageOps.exif_transpose(source)
+            if (normalized_image.width > 4096 or normalized_image.height > 4096
+                    or normalized_image.width * normalized_image.height > 16_000_000):
+                raise HTTPException(status_code=413, detail="A imagem deve ter no máximo 4096 x 4096 pixels")
+            if normalized_image.mode not in ("RGB", "RGBA"):
+                normalized_image = normalized_image.convert("RGBA" if "A" in normalized_image.getbands() else "RGB")
+            normalized_image.thumbnail((1440, 1440), Image.Resampling.LANCZOS)
+            optimized = BytesIO()
+            normalized_image.save(optimized, format="WEBP", quality=84, method=5)
+            content = optimized.getvalue()
+    except HTTPException:
+        raise
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError, Image.DecompressionBombWarning):
+        raise HTTPException(status_code=415, detail="Não foi possível validar esta imagem")
+    filename = f"{server.id}.webp"
+    target = MEDIA_DIR / filename
+    temporary = MEDIA_DIR / f"{filename}.upload"
+    try:
+        temporary.write_bytes(content)
+        temporary.replace(target)
+    except OSError as exc:
+        temporary.unlink(missing_ok=True)
+        raise HTTPException(status_code=503, detail="Não foi possível salvar a imagem agora") from exc
+    server.image_filename = filename
+    server.image_content_type = "image/webp"
+    db.commit()
+    return {"uploaded": True, "image_url": server_image_url(server)}
 
 
 @app.post("/api/v1/registration/activate")
@@ -921,6 +1058,7 @@ async def leave_server_group(payload: ServerGroupLeaveIn, server: Server = Depen
 def list_servers(account: Account = Depends(require_account), db: Session = Depends(get_db)):
     servers = db.query(Server).filter(Server.owner_id == account.id).order_by(Server.created_at.desc()).all()
     return {"servers": [{"id": s.id, "name": s.name, "slug": s.slug, "status": s.status,
+             "description": s.description, "image_url": server_image_url(s),
              "subdomain": f"https://{s.slug}.{settings.public_base_domain}"} for s in servers]}
 
 
@@ -932,7 +1070,8 @@ def server_dashboard(server_id: str, account: Account = Depends(require_account)
     online = db.query(Player).filter(Player.server_id == server.id, Player.online.is_(True)).all()
     connected = sum(1 for player in online if player.voice_connected)
     return {"server": {"id": server.id, "name": server.name, "slug": server.slug, "status": server.status,
-                        "max_distance": server.max_distance, "voice_enabled": server.voice_enabled},
+                        "max_distance": server.max_distance, "voice_enabled": server.voice_enabled,
+                        "description": server.description, "image_url": server_image_url(server)},
             "metrics": {"minecraft_online": len(online), "voice_connected": connected,
                         "speaking": sum(1 for p in online if p.speaking),
                         "moderation_muted": sum(1 for p in online if p.moderation_muted)}}
